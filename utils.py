@@ -87,16 +87,16 @@ def dv(X, vertexes, adj_matrix):
     el = random.randint(0, n)
     while el == i:
         el = random.randint(0, n)
-    y_el = vertexes[el]
-    rest_of_ys = np.delete(vertexes, [i, el], None)
+    y_el = vertexes[el]  # positive sample
+    rest_of_ys = np.delete(vertexes, [i, el], None)  # negative samples
     sigma = 0.1
     are_neighbours = el in adj_matrix[i]
     p_i_L = count_p_i_el(X, sigma, i, el, are_neighbours, N)
-    ddd = count_6(y_i, y_el)
-    suma = - 2 * p_i_L * (y_i - y_el) / ddd
+    suma = - 2 * p_i_L * (y_i - y_el) / count_6(y_i, y_el)
     for k in rest_of_ys:
         if k in adj_matrix[i]:
             y_el_k = rest_of_ys[k]
-            suma += 2 * gamma * count_p_i_el(X, sigma, i, el, True, N) * (y_i - y_el_k)/ ((dist(y_i, y_el_k)) ** 2 * count_6(y_i, y_el_k))
+            are_neighbours = el in adj_matrix[k]
+            suma += 2 * gamma * count_p_i_el(X, sigma, k, el, are_neighbours, N) * (y_i - y_el_k) / ((dist(y_i, y_el_k)) ** 2 * count_6(y_i, y_el_k))
 
     return suma
