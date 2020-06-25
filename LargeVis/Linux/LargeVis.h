@@ -12,6 +12,7 @@
 
 #include <pthread.h>
 #include <gsl/gsl_rng.h>
+#include <map>
 
 typedef float real;
 
@@ -39,6 +40,12 @@ private:
 	real *prob;
 	static const gsl_rng_type * gsl_T;
 	static gsl_rng * gsl_r;
+
+	std::vector<int> group;
+	long long n_groups;
+	long long kn = 3;
+	real* cur_vis;
+	std::map<int, std::vector<int>> Aggr;
 
 	void clean_model();
 	void clean_data();
