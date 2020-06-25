@@ -600,8 +600,6 @@ void LargeVis::visualize_thread(int id)
 		for (i = 0; i < out_dim; ++i) cur[i] = cur_vis[lx + i], err[i] = 0;
 		for (i = 0; i < n_negatives + 1; ++i)
 		{
-//		    std::cout << i <<std::endl;
-//		    fflush(stdout);
 			if (i > 0)
 			{
 				y = neg_table[(unsigned long long)floor(gsl_rng_uniform(gsl_r) * (neg_size - 0.1))];
@@ -613,22 +611,15 @@ void LargeVis::visualize_thread(int id)
 			else g = 2 * gamma / (1 + f) / (0.1 + f);
 			for (j = 0; j < out_dim; ++j)
 			{
-//			    std::cout << " J  " << j <<std::endl;
-//			    fflush(stdout);
 				gg = g * (cur[j] - cur_vis[ly + j]);
 				if (gg > grad_clip) gg = grad_clip;
 				if (gg < -grad_clip) gg = -grad_clip;
 				err[j] += gg * cur_alpha;
-//				std::cout << "XDDD " <<std::endl;
-//				fflush(stdout);
-			
+
 				gg = g * (cur_vis[ly + j] - cur[j]);
 				if (gg > grad_clip) gg = grad_clip;
 				if (gg < -grad_clip) gg = -grad_clip;
 				cur_vis[ly + j] += gg * cur_alpha;
-
-//				std::cout << "Here" << std::endl;
-//				fflush(stdout);
 
 				for (int k = 0; k < Aggr[group[y]].size(); k++) {
 				    vis[out_dim * Aggr[group[y]][k] + j] += gg * cur_alpha;
@@ -681,12 +672,8 @@ void LargeVis::visualize()
             if (group[x] != -1) {
                 continue;
             }
-//            std::cout << "X   " << x <<std::endl;
-//            std::cout << (knn_vec == NULL) <<std::endl;
-//            std::cout << knn_vec->size() <<std::endl;
             for (i = 0; i < knn_vec[x].size(); i++) {
                 int &y = knn_vec[x][i];
-//                std::cout << x << " " << y <<std::endl;
                 if (group[y] == -1) {
                     Q.push(make_pair(CalcDist(x, y), y));
                 }
@@ -701,23 +688,18 @@ void LargeVis::visualize()
                 pair<long double, int> r = Q.top();
                 group[r.second] = index;
                 M[index].push_back(r.second);
-//                std::cout << "Ver " << r.second <<std::endl;
                 Q.pop();
             }
-//            std::cout << "Ind " << index <<std::endl;
             Aggr[index] = M[index];
             index++;
         }
         n_groups = index;
 
-        std::cout << "Gr  " << n_groups <<std::endl;
-        std::cout << n_vertices << " " << n_samples <<std::endl;
         pthread_t *pt = new pthread_t[n_threads];
         for (int j = 0; j < n_threads; ++j) pthread_create(&pt[j], NULL, LargeVis::visualize_thread_caller, new arg_struct(this, j));
         for (int j = 0; j < n_threads; ++j) pthread_join(pt[j], NULL);
         delete[] pt;
 
-        std::cout << "XDDD " <<std::endl;
         break;
     }
 	printf("\n");
