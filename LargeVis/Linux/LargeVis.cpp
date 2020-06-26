@@ -660,12 +660,15 @@ void LargeVis::visualize()
 	    Aggr[i].push_back(i);
 	}
 	n_groups = n_vertices;
+	orig_n_vertices = n_vertices;
 
-	bool continue_coarsening_flag = true;
-	while (continue_coarsening_flag)
+    init_neg_table();
+    init_alias_table();
+
+    bool continue_coarsening_flag = true;
+    while (continue_coarsening_flag)
     {
-        init_neg_table();
-        init_alias_table();
+        std::cout << "ELO " << n_groups <<std::endl;
         edge_count_actual = 0;
 
         pthread_t *pt = new pthread_t[n_threads];
@@ -745,7 +748,11 @@ void LargeVis::visualize()
             edge_to[i] = group[edge_to[i]];
         }
 
-        if (n_groups > 0.8 * n_vertices) {
+        for (i = 0; i < neg_size; i++) {
+            neg_table[i] = group[neg_table[i]];
+        }
+
+        if (n_groups > 0.8 * n_vertices || n_groups < kn) {
             continue_coarsening_flag = false;
             break;
         }
@@ -758,9 +765,10 @@ void LargeVis::visualize()
         delete[] knn_vec;
         knn_vec = new_knn_vec;
         Aggr = NewAggr;
-
     }
 	printf("\n");
+
+    n_vertices = orig_n_vertices;
 }
 
 void LargeVis::run(long long out_d, long long n_thre, long long n_samp, long long n_prop, real alph, long long n_tree, long long n_nega, long long n_neig, real gamm, real perp)
