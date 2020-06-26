@@ -2,6 +2,7 @@
 #include <map>
 #include <float.h>
 #include <iostream>
+#include <set>
 
 LargeVis::LargeVis()
 {
@@ -645,7 +646,7 @@ void *LargeVis::visualize_thread_caller(void *arg)
 
 void LargeVis::visualize()
 {
-	long long i, x;
+	long long i, x, j, lx;
 	vis = new real[n_vertices * out_dim];
 	for (i = 0; i < n_vertices * out_dim; ++i) vis[i] = (gsl_rng_uniform(gsl_r) - 0.5) / out_dim * 0.0001;
 
@@ -655,8 +656,10 @@ void LargeVis::visualize()
 	}
 	group.resize(n_vertices);
 	for (i = 0; i < n_vertices; i++) {
-	    group[i] = -1;
+	    group[i] = i;
+	    Aggr[i].push_back(i);
 	}
+	n_groups = n_vertices;
 
 	bool continue_coarsening_flag = true;
 	while (continue_coarsening_flag)
@@ -665,9 +668,18 @@ void LargeVis::visualize()
         init_alias_table();
         edge_count_actual = 0;
 
-        std::map<int, std::vector<int>> M;
+        pthread_t *pt = new pthread_t[n_threads];
+        for (int j = 0; j < n_threads; ++j) pthread_create(&pt[j], NULL, LargeVis::visualize_thread_caller, new arg_struct(this, j));
+        for (int j = 0; j < n_threads; ++j) pthread_join(pt[j], NULL);
+        delete[] pt;
+
+        std::map<int, std::vector<int>> M, NewAggr;
         int index = 0;
         std::priority_queue<pair<long double,int>> Q;
+        for (i = 0; i < n_vertices; i++) {
+            group[i] = -1;
+        }
+
         for (x = 0; x < n_vertices; x++) {
             if (group[x] != -1) {
                 continue;
@@ -682,7 +694,7 @@ void LargeVis::visualize()
                 }
             }
             Q.push(make_pair(0, x));
-            
+
             M[index] = {};
             while (!Q.empty()) {
                 pair<long double, int> r = Q.top();
@@ -690,17 +702,63 @@ void LargeVis::visualize()
                 M[index].push_back(r.second);
                 Q.pop();
             }
-            Aggr[index] = M[index];
+            NewAggr[index] = {};
+            for (int y : M[index]) {
+                NewAggr[index].insert(NewAggr[index].end(), Aggr[y].begin(), Aggr[y].end());
+            }
             index++;
         }
         n_groups = index;
 
-        pthread_t *pt = new pthread_t[n_threads];
-        for (int j = 0; j < n_threads; ++j) pthread_create(&pt[j], NULL, LargeVis::visualize_thread_caller, new arg_struct(this, j));
-        for (int j = 0; j < n_threads; ++j) pthread_join(pt[j], NULL);
-        delete[] pt;
+        std::set<pair<int,int>> Added_edge;
+        std::vector<int>* new_knn_vec = new vector<int>[n_groups];
+        for (x = 0; x < n_vertices; x++) {
+            for (i = 0; i < knn_vec[x].size(); i++) {
+                int &y = knn_vec[x][i];
+                pair<int,int> new_edge = {group[x], group[y]};
+                if (new_edge.first != new_edge.second && Added_edge.find(new_edge) == Added_edge.end()) {
+                    new_knn_vec[new_edge.first].push_back(new_edge.second);
+                    Added_edge.insert(new_edge);
+                }
+            }
+        }
 
-        break;
+        real* new_cur_vis = new real[n_groups * out_dim];
+        real* new_vec = new real[n_groups * out_dim];
+
+        for (x = 0; x < n_groups; x++) {
+            lx = x * out_dim;
+            for (j = 0; j < out_dim; j++) {
+                new_cur_vis[lx + j] = 0.0;
+                for (i = 0; i < M[x].size(); i++) {
+                    int &y = M[x][i];
+                    new_cur_vis[lx + j] += cur_vis[y * out_dim + j];
+                    new_vec[lx + j] += vec[y * out_dim + j];
+                }
+                new_cur_vis[lx + j] /= M[x].size();
+                new_vec[lx + j] /= M[x].size();
+            }
+        }
+
+        for (i = 0; i < n_edge; i++) {
+            edge_from[i] = group[edge_from[i]];
+            edge_to[i] = group[edge_to[i]];
+        }
+
+        if (n_groups > 0.8 * n_vertices) {
+            continue_coarsening_flag = false;
+            break;
+        }
+
+        n_vertices = n_groups;
+        delete[] cur_vis;
+        cur_vis = new_cur_vis;
+        delete[] vec;
+        vec = new_vec;
+        delete[] knn_vec;
+        knn_vec = new_knn_vec;
+        Aggr = NewAggr;
+
     }
 	printf("\n");
 }

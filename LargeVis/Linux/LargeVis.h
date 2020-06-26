@@ -46,6 +46,7 @@ private:
 	long long kn = 3;
 	real* cur_vis;
 	std::map<int, std::vector<int>> Aggr;
+	long long orig_n_vertices;
 
 	void clean_model();
 	void clean_data();
